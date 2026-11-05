@@ -240,7 +240,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises</h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V4</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
@@ -252,7 +252,7 @@ function renderHome(){
         ${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div><button class="small" data-any="${a.id}">Log it</button></div>`;}).join('')}
     </div>
     <div class="row"><button id="hist">History</button></div>
-    <p class="hint">${last?'Last done '+niceDate(last.date)+'.':'Not done yet.'} Comments are kept on this phone. <span style="opacity:.7">Version 3</span></p>`;
+    <p class="hint">${last?'Last done '+niceDate(last.date)+'.':'Not done yet.'} Comments are kept on this phone.</p>`;
   $('#start').onclick=startRun;
   $('#hist').onclick=()=>{view='history'; render();};
   app.querySelectorAll('[data-any]').forEach(b=>b.onclick=()=>{ audioOn(); anyEx=ANYTIME.find(a=>a.id===b.dataset.any); view='anytime'; render(); });
@@ -265,7 +265,7 @@ function renderAnytime(){
     ${n?`<div class="notecard"><span class="eyebrow">You said ${niceDate(n.date)}</span><p>${esc(n.note)}</p></div>`:''}
     <label for="anote">Comment (optional)<textarea id="anote" placeholder="Type, or tap the keyboard microphone"></textarea></label>
     <div class="row"><button id="cancel">Cancel</button><button class="primary" id="save">Save</button></div>`;
-  if(n) say('Last time you said: '+n.note);
+  say((n?'You said: '+n.note+'. ':'')+'Any comment?');
   $('#cancel').onclick=()=>{hush(); view='home'; render();};
   $('#save').onclick=()=>{ hush();
     state.sessions.push({id:'s-'+Date.now(),kind:'anytime',date:todayKey(),startedAt:Date.now(),finished:true,
@@ -387,9 +387,7 @@ function startRest(){
   const e=ex(), prev=lastNoteFor(e.id, run.session.id), last=run.i+1>=ROUTINE.length;
   run.phase='rest'; run.note=''; run.parts=[]; run.lastBeep=null; run.start=Date.now(); run.paused=false;
   render();
-  say((last?'Well done, that was the last one. ':'Rest. ')+
-      (prev?'Last time, '+niceDate(prev.date)+', for '+e.name+', you said: '+prev.note+'. ':'There was no comment last time. ')+
-      'Any comment today?');
+  say((prev?'You said: '+prev.note+'. ':'')+'Any comment?');
 }
 function updateRest(){
   const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
