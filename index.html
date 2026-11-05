@@ -98,7 +98,7 @@ const ROUTINE = [
   {id:'armpull', name:'Seated arm pulls',              parts:[{label:'',secs:30}]},
   {id:'sitstand',name:'Standing from sitting',         parts:[{label:'',secs:30}]},
   {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
-  {id:'press',   name:'Press ups or near equivalent',  parts:[{label:'',secs:30}]},
+  {id:'press',   name:'Press ups',                     parts:[{label:'',secs:30}]},
   {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
   {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:0,reps:20},{label:'Right leg',secs:0,reps:20}]}
 ];
@@ -240,7 +240,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V4</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V5</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
@@ -283,14 +283,16 @@ function startRun(){
   audioOn(); keepAwake(); micOn();
   run={session:{id:'s-'+Date.now(),kind:'routine',date:todayKey(),startedAt:Date.now(),entries:[],finished:false},
        i:0,p:0,phase:'go',start:Date.now(),paused:false,pausedAt:0,lastBeep:null,work:0,note:'',quit:false};
-  view='run'; beginPart(true);
+  view='run'; beginPart('Starting. ');
 }
-function beginPart(first){
-  run.phase='go'; run.lastBeep=null;
-  render(); run.paused=true; run.pausedAt=Date.now(); run.start=Date.now(); // hold the clock while it speaks
+function beginPart(prefix=''){
+  // the clock is held at zero until the announcement finishes
+  run.phase='go'; run.lastBeep=null; run.announcing=true;
+  run.paused=true; run.pausedAt=Date.now(); run.start=run.pausedAt;
+  render();
   const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
-  const intro = run.p===0 ? `${first?'Starting. ':''}Exercise ${run.i+1}. ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${pt.label}. ${how}. Go.`;
-  say(intro, ()=>{ if(run && run.phase==='go' && !run.userPaused){ run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
+  const intro = run.p===0 ? `${prefix}Exercise ${run.i+1}. ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${prefix}${pt.label}. ${how}. Go.`;
+  say(intro, ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
 }
 
 function renderRun(){
@@ -359,8 +361,12 @@ function pauseRun(silent){
 function resumeRun(){
   if(!run || !run.userPaused) return;
   run.userPaused=false; run.quit=false;
+  // paused before the exercise had started: announce it again from the top
+  if(run.phase==='go' && run.announcing){ beginPart('Resuming. '); return; }
   render();
-  say('Resuming.', ()=>{ if(run && !run.userPaused && run.paused){ run.start += Date.now()-run.pausedAt; run.paused=false; } });
+  const pt=part();
+  const where = run.phase==='rest' ? 'Any comment?' : run.phase==='switch' ? pt.label+' next.' : ex().name+(pt.label?', '+pt.label:'')+'.';
+  say('Resuming. '+where, ()=>{ if(run && !run.userPaused && run.paused){ run.start += Date.now()-run.pausedAt; run.paused=false; } });
 }
 function countdownBeeps(left){ const s=Math.ceil(left);
   if(s<=3 && s>=1 && run.lastBeep!==s){ run.lastBeep=s; beep(660,.12); buzz(80); } }
@@ -414,8 +420,7 @@ function skip(){
     s.finished=true; save(); run.phase='done'; micOff(); releaseAwake(); render(); say('Workout finished. Well done.'); return;
   }
   save();
-  if(note) say('Saved.', ()=>{ run.i++; run.p=0; beginPart(); });
-  else { run.i++; run.p=0; beginPart(); }
+  run.i++; run.p=0; beginPart(note?'Saved. ':'');
 }
 
 /* ---------- history ---------- */
