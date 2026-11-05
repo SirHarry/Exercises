@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1E7550">
+<title>Daily Exercises</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --ink:#13211B; --muted:#5B6B63; --line:#D7E0DB;
+  --go:#1E7550; --go-soft:#DDEFE6; --rest:#2F5C93; --rest-soft:#DFE8F4; --note:#8A5A12; --note-soft:#FBF0DC;
+  --pause:#9A5B00; --pause-soft:#FCEBD0; --danger:#A4342A;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0F1613; --surface:#18221D; --ink:#E6EEEA; --muted:#97A79F; --line:#2A3832;
+  --go:#4FC08A; --go-soft:#173328; --rest:#7FA9E0; --rest-soft:#18263A; --note:#E8B45F; --note-soft:#33281A;
+  --pause:#F0B85A; --pause-soft:#3A2B12; --danger:#EF7F73; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+.app{max-width:520px;margin:0 auto;padding-block:18px 40px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance}
+h1{font-size:2.1rem;line-height:1} h2{font-size:1.55rem} h3{font-size:1.25rem}
+p{margin:0}
+.eyebrow{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+.muted{color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:12px 16px;min-height:52px}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--go);outline-offset:2px}
+.primary{background:var(--go);border-color:var(--go);color:var(--bg);font-weight:700;font-size:1.15rem;min-height:62px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>button{flex:1 1 0}
+.ghost{background:transparent}
+.danger{color:var(--danger)}
+.small{min-height:40px;padding:6px 12px;font-size:.95rem;flex:0 0 auto!important}
+.list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.item{display:grid;grid-template-columns:2rem 1fr auto;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.item .n{font-family:var(--display);font-size:1.4rem;color:var(--muted);line-height:1.1}
+.item .name{font-weight:700;min-width:0}
+.item .meta{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;font-size:.92rem;max-width:9rem}
+.prev{font-size:.92rem;color:var(--note);margin-top:2px;font-weight:400}
+.notecard{background:var(--note-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.notecard .eyebrow{color:var(--note)}
+.face{border-radius:22px;padding:20px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.face.go{background:var(--go-soft)} .face.rest{background:var(--rest-soft)} .face.paused{background:var(--pause-soft)}
+.face .phase{font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.9rem}
+.face.go .phase{color:var(--go)} .face.rest .phase{color:var(--rest)} .face.paused .phase{color:var(--pause)}
+.face .exname{font-family:var(--display);font-size:2.1rem;line-height:1.05;text-wrap:balance}
+.face .part{font-size:1.25rem;font-weight:700}
+.clock{font-family:var(--display);font-size:min(30vw,8.5rem);line-height:.95;font-variant-numeric:tabular-nums}
+.face.go .clock{color:var(--go)} .face.rest .clock{color:var(--rest)} .face.paused .clock{color:var(--pause)}
+.bar{width:100%;height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:currentColor}
+.face.go .bar{color:var(--go)} .face.rest .bar{color:var(--rest)} .face.paused .bar{color:var(--pause)}
+textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%;min-height:84px;resize:vertical}
+label{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.95rem}
+.mic{display:flex;align-items:center;gap:8px;font-size:.92rem;color:var(--muted)}
+.mic i{width:12px;height:12px;border-radius:50%;background:var(--line);flex:0 0 auto}
+.mic.on i{background:var(--danger);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.heard{font-size:.92rem;color:var(--muted);min-height:1.4em}
+.hint{font-size:.92rem;color:var(--muted)}
+.hist{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
+.hist ul{margin:0;padding-left:1.1rem}
+.confirm{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:var(--note-soft)}
+.anytime{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px dashed var(--line);border-radius:14px}
+.anytime .ar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.anytime .ar>div{min-width:0}
+.warn{background:var(--pause-soft);border-radius:12px;padding:10px 12px;font-size:.92rem}
+@media (prefers-reduced-motion:reduce){.mic.on i{animation:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const LS = 'daily-exercises-v1';
+const REST = 30, SWITCH = 5;
+const todayKey = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmt = s => { s=Math.max(0,Math.round(s)); const m=Math.floor(s/60), r=s%60; return m+':'+String(r).padStart(2,'0'); };
+const niceDate = k => { const [y,m,d]=k.split('-').map(Number); const dt=new Date(y,m-1,d);
+  const diff=Math.round((new Date(todayKey()+'T00:00')-dt)/864e5);
+  if(diff===0) return 'today'; if(diff===1) return 'yesterday';
+  return 'on '+dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}); };
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+const esc = t => String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ===== Henry's routine — edit here =====
+   secs>0 = countdown; secs=0 = count your reps and say "done" or tap Done */
+const ROUTINE = [
+  {id:'armpull', name:'Seated arm pulls',              parts:[{label:'',secs:30}]},
+  {id:'sitstand',name:'Standing from sitting',         parts:[{label:'',secs:30}]},
+  {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
+  {id:'press',   name:'Press ups or near equivalent',  parts:[{label:'',secs:30}]},
+  {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
+  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:0,reps:20},{label:'Right leg',secs:0,reps:20}]}
+];
+const ANYTIME = [
+  {id:'kneedrive', name:'Reverse knee drive', detail:'5 times each leg'},
+  {id:'tandem',    name:'Tandem walk',        detail:'Whenever you like'}
+];
+const describe = ex => ex.parts.map(p=>(p.label?p.label.replace(' leg','')+' ':'')+(p.secs?p.secs+'s':p.reps+' times')).join(' + ');
+
+/* ---------- storage (on this phone) ---------- */
+let state = { sessions:[] };
+try{ const v=JSON.parse(localStorage.getItem(LS)||'null'); if(v&&v.sessions) state=v; }catch(e){}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+const sorted = () => [...state.sessions].sort((a,b)=>b.startedAt-a.startedAt);
+function lastNoteFor(exId, excludeId){
+  for(const s of sorted()){ if(s.id===excludeId) continue;
+    const e=(s.entries||[]).find(x=>x.exId===exId && x.note); if(e) return {note:e.note, date:s.date}; }
+  return null;
+}
+
+/* ---------- sound, screen ---------- */
+let ac=null, wake=null;
+function audioOn(){ try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); }catch(e){} }
+function beep(freq=880, dur=.15){ if(!ac) return; try{ const o=ac.createOscillator(), g=ac.createGain();
+  o.frequency.value=freq; o.connect(g); g.connect(ac.destination);
+  g.gain.setValueAtTime(.0001,ac.currentTime); g.gain.exponentialRampToValueAtTime(.4,ac.currentTime+.02);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+dur); o.start(); o.stop(ac.currentTime+dur+.05);}catch(e){} }
+function buzz(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+async function keepAwake(){ try{ if(navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); }catch(e){} }
+function releaseAwake(){ try{ wake && wake.release(); }catch(e){} wake=null; }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && run) keepAwake(); });
+
+/* ---------- speaking (the phone talks; the mic is switched off meanwhile so it doesn't hear itself) ---------- */
+let voice=null, speaking=false, speakTimer=null;
+function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); voice=vs.find(v=>v.lang==='en-GB')||vs.find(v=>(v.lang||'').startsWith('en'))||null; }catch(e){} }
+try{ speechSynthesis.onvoiceschanged=pickVoice; pickVoice(); }catch(e){}
+let sayId=0;
+function say(text, then){
+  const my=++sayId;
+  speaking=true; micStop();
+  clearTimeout(speakTimer);
+  const finish=()=>{ if(my!==sayId || !speaking) return; speaking=false; clearTimeout(speakTimer); micMaybeStart(); then&&then(); };
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);
+    if(voice) u.voice=voice; u.lang='en-GB'; u.rate=.95; u.onend=finish; u.onerror=finish; speechSynthesis.speak(u); }catch(e){ finish(); return; }
+  speakTimer=setTimeout(finish, 1500 + text.length*85); // safety net if onend never fires
+}
+function hush(){ sayId++; try{ speechSynthesis.cancel(); }catch(e){} speaking=false; clearTimeout(speakTimer); }
+
+/* ---------- listening ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let lastSpeechAt=0, rec=null, micWanted=false, micLive=false, micBlocked=false, restartT=null;
+function micInit(){
+  if(!SR || rec) return;
+  rec = new SR(); rec.lang='en-GB'; rec.continuous=true; rec.interimResults=true;
+  rec.onstart=()=>{ micLive=true; micShow(); };
+  rec.onend=()=>{ micLive=false; micShow(); micMaybeStart(400); };
+  rec.onerror=e=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed'){ micBlocked=true; micWanted=false; micShow(); } };
+  rec.onresult=e=>{
+    lastSpeechAt=Date.now();
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i], t=r[0].transcript.trim();
+      if(r.isFinal){ if(t) heard(t); } else interim+=t+' ';
+    }
+    const h=$('#heard'); if(h) h.textContent = interim ? '“'+interim.trim()+'…”' : (h.dataset.last||'');
+    // react to "pause" straight away, without waiting for the phrase to finish
+    if(interim && run && !run.paused && /^(pause|stop|wait|hold on)\b/i.test(interim.trim()) && wordCount(interim)<=2){ pauseRun(); }
+  };
+}
+const wordCount = t => t.trim().split(/\s+/).length;
+function micMaybeStart(delay=0){
+  clearTimeout(restartT);
+  restartT=setTimeout(()=>{ if(micWanted && !micLive && !speaking && rec && document.visibilityState==='visible'){ try{ rec.start(); }catch(e){} } }, delay);
+}
+function micStop(){ clearTimeout(restartT); if(rec && micLive){ try{ rec.abort(); }catch(e){} } }
+function micOn(){ micInit(); micWanted=!!rec && !micBlocked; micMaybeStart(); }
+function micOff(){ micWanted=false; micStop(); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') micMaybeStart(300); else micStop(); });
+function micShow(){ const m=$('#mic'); if(!m) return;
+  m.className='mic'+(micLive?' on':'');
+  m.querySelector('span').textContent = !SR ? 'Voice not supported here — use Chrome' : micBlocked ? 'Microphone blocked — allow it in Chrome settings' :
+    speaking ? 'Speaking…' : micLive ? (run&&run.phase==='rest'&&!run.paused ? 'Listening for your comment' : 'Listening — say “pause”') : 'Microphone starting…'; }
+const micBar = () => `<div class="mic" id="mic"><i></i><span></span></div><div class="heard" id="heard"></div>`;
+
+/* commands */
+function heard(t){
+  const s=t.toLowerCase().replace(/[.,!?]/g,'').trim();
+  const h=$('#heard'); if(h){ h.dataset.last='Heard: “'+t+'”'; h.textContent=h.dataset.last; }
+  if(!run) return;
+  const short = wordCount(s)<=3;
+  if(short && /^(pause|stop|wait|hold on)( please)?$/.test(s)) return pauseRun();
+  if(short && /^(resume|continue|carry on|go|go on|start|ready)( please)?$/.test(s)) return resumeRun();
+  if(run.paused) return;
+  if(short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skip();
+  if(short && /^(done|finished|that's it)$/.test(s) && run.phase==='go' && !part().secs) return endPart();
+  if(run.phase==='rest'){
+    if(/^(no comment|nothing|none)$/.test(s)){ run.note=''; showNote(); return; }
+    run.note = (run.note ? run.note+'. ' : '') + cap(t);
+    showNote(); beep(1200,.08);
+  }
+}
+function showNote(){ const ta=$('#note'); if(ta && document.activeElement!==ta) ta.value=run.note||''; }
+
+/* ---------- views ---------- */
+let view='home', run=null, tick=null, confirmDel=null, anyEx=null;
+function render(){
+  clearInterval(tick); tick=null;
+  ({home:renderHome, run:renderRun, history:renderHistory, anytime:renderAnytime})[view]();
+  micShow();
+}
+
+function renderHome(){
+  const last=sorted().find(s=>s.kind!=='anytime');
+  app.innerHTML=`
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises</h1></div>
+    ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
+    <button class="primary" id="start">Start today’s exercises</button>
+    <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
+    <div class="list">${ROUTINE.map((x,i)=>{ const n=lastNoteFor(x.id); return `
+      <div class="item"><div class="n">${i+1}</div><div class="name">${esc(x.name)}${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div>
+      <div class="meta">${esc(describe(x))}</div></div>`;}).join('')}</div>
+    <div class="anytime"><h3>At any time</h3>
+      ${ANYTIME.map(a=>{ const n=lastNoteFor(a.id); return `<div class="ar"><div><b>${esc(a.name)}</b><div class="muted" style="font-size:.92rem">${esc(a.detail)}</div>
+        ${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div><button class="small" data-any="${a.id}">Log it</button></div>`;}).join('')}
+    </div>
+    <div class="row"><button id="hist">History</button></div>
+    <p class="hint">${last?'Last done '+niceDate(last.date)+'.':'Not done yet.'} Comments are kept on this phone.</p>`;
+  $('#start').onclick=startRun;
+  $('#hist').onclick=()=>{view='history'; render();};
+  app.querySelectorAll('[data-any]').forEach(b=>b.onclick=()=>{ audioOn(); anyEx=ANYTIME.find(a=>a.id===b.dataset.any); view='anytime'; render(); });
+}
+
+/* any-time exercises: typed or keyboard-mic comment */
+function renderAnytime(){
+  const a=anyEx, n=lastNoteFor(a.id);
+  app.innerHTML=`<span class="eyebrow">At any time</span><h2>${esc(a.name)}</h2><p class="muted">${esc(a.detail)}</p>
+    ${n?`<div class="notecard"><span class="eyebrow">You said ${niceDate(n.date)}</span><p>${esc(n.note)}</p></div>`:''}
+    <label for="anote">Comment (optional)<textarea id="anote" placeholder="Type, or tap the keyboard microphone"></textarea></label>
+    <div class="row"><button id="cancel">Cancel</button><button class="primary" id="save">Save</button></div>`;
+  if(n) say('Last time you said: '+n.note);
+  $('#cancel').onclick=()=>{hush(); view='home'; render();};
+  $('#save').onclick=()=>{ hush();
+    state.sessions.push({id:'s-'+Date.now(),kind:'anytime',date:todayKey(),startedAt:Date.now(),finished:true,
+      entries:[{exId:a.id,name:a.name,secs:0,note:$('#anote').value.trim().slice(0,500)}]});
+    save(); view='home'; render(); };
+}
+
+/* ---------- the workout ----------
+   phases: go (exercise part running), switch (5s change legs), rest (30s, comment), done */
+const ex = () => ROUTINE[run.i];
+const part = () => ex().parts[run.p];
+const elapsed = () => ((run.paused?run.pausedAt:Date.now())-run.start)/1000;
+
+function startRun(){
+  audioOn(); keepAwake(); micOn();
+  run={session:{id:'s-'+Date.now(),kind:'routine',date:todayKey(),startedAt:Date.now(),entries:[],finished:false},
+       i:0,p:0,phase:'go',start:Date.now(),paused:false,pausedAt:0,lastBeep:null,work:0,note:'',quit:false};
+  view='run'; beginPart(true);
+}
+function beginPart(first){
+  run.phase='go'; run.lastBeep=null;
+  render(); run.paused=true; run.pausedAt=Date.now(); run.start=Date.now(); // hold the clock while it speaks
+  const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
+  const intro = run.p===0 ? `${first?'Starting. ':''}Exercise ${run.i+1}. ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${pt.label}. ${how}. Go.`;
+  say(intro, ()=>{ if(run && run.phase==='go' && !run.userPaused){ run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
+}
+
+function renderRun(){
+  const e=ex(), N=ROUTINE.length, ph=run.phase, pz=run.userPaused;
+  const top=`<div class="row" style="justify-content:space-between;align-items:center"><span class="eyebrow">Exercise ${run.i+1} of ${N}</span><button class="ghost small" id="quit">End workout</button></div>`;
+  const pauseBtn=`<button id="pz">${pz?'Resume':'Pause'}</button>`;
+  if(run.quit){
+    app.innerHTML=`<div class="confirm"><h2>End this workout?</h2><p>Comments for the exercises you’ve finished are already saved.</p>
+      <div class="row"><button id="keep">Keep going</button><button class="danger" id="end">End workout</button></div></div>`;
+    $('#keep').onclick=()=>{ run.quit=false; render(); };
+    $('#end').onclick=()=>{ hush(); micOff(); releaseAwake(); run=null; view='home'; render(); };
+    return;
+  }
+  if(ph==='go'){
+    const pt=part();
+    app.innerHTML=`${top}
+      <div class="face ${pz?'paused':'go'}"><div class="phase">${pz?'Paused — say “resume”':pt.secs?'Go':'Count to '+pt.reps+', then say “done”'}</div>
+        <div class="exname">${esc(e.name)}</div>${pt.label?`<div class="part">${esc(pt.label)}</div>`:''}
+        <div class="clock" id="clock">${pt.secs?fmt(pt.secs):'0:00'}</div>${pt.secs?'<div class="bar"><i id="bar"></i></div>':''}</div>
+      ${micBar()}
+      <div class="row">${pauseBtn}<button class="primary" id="done">${pt.secs?'Skip':'Done'}</button></div>`;
+    $('#done').onclick=()=> pt.secs ? skip() : endPart();
+    tick=setInterval(updateGo,200); updateGo();
+  } else if(ph==='switch'){
+    app.innerHTML=`${top}
+      <div class="face ${pz?'paused':'go'}"><div class="phase">${pz?'Paused — say “resume”':'Switch legs'}</div><div class="exname">${esc(e.name)}</div>
+        <div class="part">Next: ${esc(part().label)}</div><div class="clock" id="clock">${fmt(SWITCH)}</div></div>
+      ${micBar()}
+      <div class="row">${pauseBtn}<button class="primary" id="goNow">Start now</button></div>`;
+    $('#goNow').onclick=()=>beginPart();
+    tick=setInterval(updateSwitch,200); updateSwitch();
+  } else if(ph==='rest'){
+    const prev=lastNoteFor(e.id, run.session.id), nx=ROUTINE[run.i+1];
+    app.innerHTML=`${top}
+      <div class="face ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':nx?'Rest':'Last comment'}</div>
+        <div class="exname" style="font-size:1.6rem">${esc(e.name)}</div>
+        <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div>
+        ${nx?`<div class="muted">Next: <b style="color:var(--ink)">${esc(nx.name)}</b></div>`:''}</div>
+      <div class="notecard"><span class="eyebrow">${prev?'You said '+niceDate(prev.date):'Last comment'}</span><p>${prev?esc(prev.note):'No comment yet for this one.'}</p></div>
+      ${micBar()}
+      <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>
+      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?'Next exercise':'Finish'}</button></div>`;
+    const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; };
+    $('#next').onclick=skip;
+    tick=setInterval(updateRest,200); updateRest();
+  } else if(ph==='done'){
+    const s=run.session;
+    app.innerHTML=`<div class="face go"><div class="phase">Finished</div><div class="exname">Well done, Henry</div>
+      <div class="muted">${s.entries.length} exercises · ${fmt((Date.now()-s.startedAt)/1000)} in total</div></div>
+      <div class="list">${s.entries.map(x=>`<div class="item"><div class="n">✓</div><div class="name">${esc(x.name)}${x.note?`<div class="prev">“${esc(x.note)}”</div>`:''}</div><div class="meta">${fmt(x.secs)}</div></div>`).join('')}</div>
+      <button class="primary" id="home">Back to start</button>`;
+    $('#home').onclick=()=>{ run=null; view='home'; render(); };
+    return;
+  }
+  $('#quit').onclick=()=>{ run.quit=true; if(!run.userPaused) pauseRun(true); render(); };
+  $('#pz').onclick=()=> run.userPaused ? resumeRun() : pauseRun();
+}
+
+function pauseRun(silent){
+  if(!run || run.userPaused || run.phase==='done') return;
+  run.userPaused=true;
+  if(!run.paused){ run.paused=true; run.pausedAt=Date.now(); }
+  buzz(100); render();
+  if(silent!==true) say('Paused. Say resume when you are ready.');
+}
+function resumeRun(){
+  if(!run || !run.userPaused) return;
+  run.userPaused=false; run.quit=false;
+  render();
+  say('Resuming.', ()=>{ if(run && !run.userPaused && run.paused){ run.start += Date.now()-run.pausedAt; run.paused=false; } });
+}
+function countdownBeeps(left){ const s=Math.ceil(left);
+  if(s<=3 && s>=1 && run.lastBeep!==s){ run.lastBeep=s; beep(660,.12); buzz(80); } }
+function updateGo(){
+  const pt=part(), t=elapsed(), c=$('#clock'); if(!c) return;
+  if(pt.secs){ const left=pt.secs-t; c.textContent=fmt(Math.ceil(left));
+    const b=$('#bar'); if(b) b.style.width=Math.min(100,t/pt.secs*100)+'%';
+    if(run.paused) return;
+    if(Math.ceil(left)===10 && pt.secs>=20 && run.lastBeep!=='ten'){ run.lastBeep='ten'; say('Ten seconds'); }
+    countdownBeeps(left); if(left<=0) endPart();
+  } else c.textContent=fmt(t);
+}
+function updateSwitch(){ const left=SWITCH-elapsed(), c=$('#clock'); if(!c) return;
+  c.textContent=fmt(Math.ceil(left)); if(!run.paused && left<=0) beginPart(); }
+function endPart(){
+  clearInterval(tick);
+  const pt=part(); run.work += pt.secs ? Math.min(pt.secs, Math.round(elapsed())) : Math.round(elapsed());
+  beep(990,.3); buzz([200,80,200]);
+  if(run.p+1 < ex().parts.length){
+    run.p++; run.phase='switch'; run.start=Date.now(); run.paused=false; render(); say('Switch to '+part().label.toLowerCase());
+  } else startRest();
+}
+function startRest(){
+  const e=ex(), prev=lastNoteFor(e.id, run.session.id), last=run.i+1>=ROUTINE.length;
+  run.phase='rest'; run.note=''; run.lastBeep=null; run.start=Date.now(); run.paused=false;
+  render();
+  say((last?'Well done, that was the last one. ':'Rest. ')+
+      (prev?'Last time, '+niceDate(prev.date)+', for '+e.name+', you said: '+prev.note+'. ':'There was no comment last time. ')+
+      'Any comment today?');
+}
+function updateRest(){
+  const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
+  c.textContent=fmt(Math.ceil(left)); const b=$('#bar'); if(b) b.style.width=Math.min(100,t/REST*100)+'%';
+  if(run.paused) return;
+  countdownBeeps(left);
+  if(left<=0 && Date.now()-lastSpeechAt>1500) skip(); // don't cut you off mid-sentence
+}
+function skip(){
+  if(!run || run.userPaused) return;
+  clearInterval(tick);
+  if(run.phase==='go' || run.phase==='switch'){
+    if(run.phase==='go'){ const pt=part(); run.work += pt.secs?Math.min(pt.secs,Math.round(elapsed())):Math.round(elapsed()); }
+    hush(); startRest(); return;
+  }
+  if(run.phase!=='rest') return;
+  hush();
+  const e=ex(), s=run.session, ta=$('#note');
+  const note=((ta && ta.value) || run.note || '').trim().slice(0,500);
+  s.entries.push({exId:e.id, name:e.name, secs:run.work, note});
+  run.work=0;
+  if(!state.sessions.includes(s)) state.sessions.push(s);
+  if(run.i+1>=ROUTINE.length){
+    s.finished=true; save(); run.phase='done'; micOff(); releaseAwake(); render(); say('Workout finished. Well done.'); return;
+  }
+  save();
+  if(note) say('Saved.', ()=>{ run.i++; run.p=0; beginPart(); });
+  else { run.i++; run.p=0; beginPart(); }
+}
+
+/* ---------- history ---------- */
+function renderHistory(){
+  const ss=sorted();
+  app.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-end"><h1>History</h1><button class="small" id="back">Back</button></div>
+    ${ss.length?'':'<p class="muted">Nothing yet. Your workouts and comments will appear here.</p>'}
+    <div>${ss.map(s=>`<div class="hist"><div class="row" style="justify-content:space-between;align-items:baseline">
+        <b>${cap(niceDate(s.date))}</b><span class="muted" style="font-size:.9rem">${s.kind==='anytime'?'any-time exercise':s.entries.length+' of '+ROUTINE.length+' done'}</span></div>
+      <ul>${s.entries.map(e=>`<li>${esc(e.name)}${e.secs?` <span class="muted">(${fmt(e.secs)})</span>`:''}${e.note?` — <span style="color:var(--note)">${esc(e.note)}</span>`:''}</li>`).join('')}</ul>
+      ${confirmDel===s.id?`<div class="row"><button data-keep>Keep</button><button class="danger" data-del="${s.id}">Delete this</button></div>`
+        :`<button class="ghost danger small" data-ask="${s.id}" style="align-self:flex-start">Delete</button>`}</div>`).join('')}</div>`;
+  $('#back').onclick=()=>{confirmDel=null; view='home'; render();};
+  app.querySelectorAll('[data-ask]').forEach(b=>b.onclick=()=>{confirmDel=b.dataset.ask; renderHistory();});
+  app.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>{confirmDel=null; renderHistory();});
+  app.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ state.sessions=state.sessions.filter(x=>x.id!==b.dataset.del); confirmDel=null; save(); renderHistory(); });
+}
+
+render();
+})();
+</script>
+</body>
+</html>
