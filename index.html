@@ -98,9 +98,9 @@ const ROUTINE = [
   {id:'armpull', name:'Seated arm pulls',              parts:[{label:'',secs:30}]},
   {id:'sitstand',name:'Standing from sitting',         parts:[{label:'',secs:30}]},
   {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
-  {id:'press',   name:'Press ups',                     parts:[{label:'',secs:30}]},
+  {id:'press',   name:'Press ups or near equivalent',  parts:[{label:'',secs:30}]},
   {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
-  {id:'heel',    name:'Heel raise',  parts:[{label:'Left leg',secs:0,reps:20},{label:'Right leg',secs:0,reps:20}]}
+  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:0,reps:20},{label:'Right leg',secs:0,reps:20}]}
 ];
 const ANYTIME = [
   {id:'kneedrive', name:'Reverse knee drive', detail:'5 times each leg'},
@@ -153,17 +153,16 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let lastSpeechAt=0, rec=null, micWanted=false, micLive=false, micBlocked=false, restartT=null;
 function micInit(){
   if(!SR || rec) return;
-  rec = new SR(); rec.lang='en-GB'; rec.continuous=true; rec.interimResults=true;
+  rec = new SR(); rec.lang='en-GB'; rec.continuous=false; rec.interimResults=false; rec.maxAlternatives=1;
   rec.onstart=()=>{ micLive=true; micShow(); };
   rec.onend=()=>{ micLive=false; micShow(); micMaybeStart(400); };
   rec.onerror=e=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed'){ micBlocked=true; micWanted=false; micShow(); } };
   rec.onresult=e=>{
     lastSpeechAt=Date.now();
     let interim='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const r=e.results[i], t=r[0].transcript.trim();
-      if(r.isFinal){ if(t) heard(t); } else interim+=t+' ';
-    }
+    // take only the newest result: Android can resend earlier ones
+    const r=e.results[e.results.length-1], t=(r&&r[0]?r[0].transcript:'').trim();
+    if(r && r.isFinal){ if(t && !r.done){ r.done=true; heard(t); } } else interim=t;
     const h=$('#heard'); if(h) h.textContent = interim ? '“'+interim.trim()+'…”' : (h.dataset.last||'');
     // react to "pause" straight away, without waiting for the phrase to finish
     if(interim && run && !run.paused && /^(pause|stop|wait|hold on)\b/i.test(interim.trim()) && wordCount(interim)<=2){ pauseRun(); }
@@ -184,8 +183,28 @@ function micShow(){ const m=$('#mic'); if(!m) return;
     speaking ? 'Speaking…' : micLive ? (run&&run.phase==='rest'&&!run.paused ? 'Listening for your comment' : 'Listening — say “pause”') : 'Microphone starting…'; }
 const micBar = () => `<div class="mic" id="mic"><i></i><span></span></div><div class="heard" id="heard"></div>`;
 
+/* Android sometimes returns the same words several times in one go: keep one copy */
+function collapse(t){
+  let w=t.trim().split(/\s+/);
+  const key=a=>a.join(' ').toLowerCase().replace(/[^a-z0-9' ]/g,'');
+  // whole thing is one phrase repeated (the last copy may be cut short)
+  for(let L=1; L<=w.length-2; L++){
+    const chunk=key(w.slice(0,L));
+    let ok=true; for(let i=L;i<w.length;i+=L){ const c=key(w.slice(i,i+L)); if(!(chunk===c || (i+L>=w.length && w.length-i>=2 && chunk.startsWith(c)))){ ok=false; break; } }
+    if(ok) return w.slice(0,L).join(' ');
+  }
+  // remove any back-to-back repeated run of words
+  for(let L=Math.floor(w.length/2); L>=1; L--){
+    for(let i=0;i+2*L<=w.length;){
+      const a=key(w.slice(i,i+L)), b=key(w.slice(i+L,i+2*L));
+      if(a===b) w.splice(i+L,L); else i++;
+    }
+  }
+  return w.join(' ');
+}
 /* commands */
 function heard(t){
+  t=collapse(t);
   const s=t.toLowerCase().replace(/[.,!?]/g,'').trim();
   const h=$('#heard'); if(h){ h.dataset.last='Heard: “'+t+'”'; h.textContent=h.dataset.last; }
   if(!run) return;
@@ -196,8 +215,15 @@ function heard(t){
   if(short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skip();
   if(short && /^(done|finished|that's it)$/.test(s) && run.phase==='go' && !part().secs) return endPart();
   if(run.phase==='rest'){
-    if(/^(no comment|nothing|none)$/.test(s)){ run.note=''; showNote(); return; }
-    run.note = (run.note ? run.note+'. ' : '') + cap(t);
+    if(/^(no comment|nothing|none)$/.test(s)){ run.note=''; run.parts=[]; showNote(); return; }
+    const parts = run.parts || (run.parts=[]);
+    const norm = x => x.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+    const n=norm(t), prev=parts.length?norm(parts[parts.length-1]):'';
+    if(parts.some(p=>norm(p)===n)) return;               // exact repeat: ignore
+    if(prev && prev.length && n.startsWith(prev)) parts[parts.length-1]=cap(t); // longer version of the same phrase
+    else if(prev && prev.includes(n)) return;             // shorter echo of the last phrase
+    else parts.push(cap(t));
+    run.note = parts.join('. ');
     showNote(); beep(1200,.08);
   }
 }
@@ -226,7 +252,7 @@ function renderHome(){
         ${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div><button class="small" data-any="${a.id}">Log it</button></div>`;}).join('')}
     </div>
     <div class="row"><button id="hist">History</button></div>
-    <p class="hint">${last?'Last done '+niceDate(last.date)+'.':'Not done yet.'} Comments are kept on this phone.</p>`;
+    <p class="hint">${last?'Last done '+niceDate(last.date)+'.':'Not done yet.'} Comments are kept on this phone. <span style="opacity:.7">Version 3</span></p>`;
   $('#start').onclick=startRun;
   $('#hist').onclick=()=>{view='history'; render();};
   app.querySelectorAll('[data-any]').forEach(b=>b.onclick=()=>{ audioOn(); anyEx=ANYTIME.find(a=>a.id===b.dataset.any); view='anytime'; render(); });
@@ -307,7 +333,7 @@ function renderRun(){
       ${micBar()}
       <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>
       <div class="row">${pauseBtn}<button class="primary" id="next">${nx?'Next exercise':'Finish'}</button></div>`;
-    const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; };
+    const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; run.parts=ta.value?[ta.value]:[]; };
     $('#next').onclick=skip;
     tick=setInterval(updateRest,200); updateRest();
   } else if(ph==='done'){
@@ -359,7 +385,7 @@ function endPart(){
 }
 function startRest(){
   const e=ex(), prev=lastNoteFor(e.id, run.session.id), last=run.i+1>=ROUTINE.length;
-  run.phase='rest'; run.note=''; run.lastBeep=null; run.start=Date.now(); run.paused=false;
+  run.phase='rest'; run.note=''; run.parts=[]; run.lastBeep=null; run.start=Date.now(); run.paused=false;
   render();
   say((last?'Well done, that was the last one. ':'Rest. ')+
       (prev?'Last time, '+niceDate(prev.date)+', for '+e.name+', you said: '+prev.note+'. ':'There was no comment last time. ')+
