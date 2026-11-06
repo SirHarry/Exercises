@@ -244,7 +244,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V7</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V8</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
@@ -295,7 +295,9 @@ function beginPart(prefix=''){
   run.paused=true; run.pausedAt=Date.now(); run.start=run.pausedAt;
   render();
   const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
-  const intro = run.p===0 ? `${prefix}${run.i===0?'Exercise 1':'Next exercise is'} ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${prefix}${pt.label}. ${how}. Go.`;
+  // after a rest the name was already given at the start of the rest, so just start it
+  const named = run.i===0 ? 'Exercise 1, '+e.name+'. ' : prefix.startsWith('Resuming') ? e.name+'. ' : '';
+  const intro = `${prefix}${run.p===0?named:''}${pt.label?pt.label+'. ':''}${how}. Go.`;
   say(intro, ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
 }
 
@@ -396,7 +398,8 @@ function startRest(){
   const e=ex(), prev=lastNoteFor(e.id, run.session.id), last=run.i+1>=ROUTINE.length;
   run.phase='rest'; run.note=''; run.parts=[]; run.lastBeep=null; run.start=Date.now(); run.paused=false;
   render();
-  say((prev?'You said: '+prev.note+'. ':'')+'Any comment?');
+  const nx=ROUTINE[run.i+1];
+  say((nx?'Next exercise is '+nx.name+'. ':'')+(prev?'You said: '+prev.note+'. ':'')+'Any comment?');
 }
 function updateRest(){
   const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
