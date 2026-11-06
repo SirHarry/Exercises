@@ -100,7 +100,7 @@ const ROUTINE = [
   {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
   {id:'press',   name:'Press ups',                     parts:[{label:'',secs:30}]},
   {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
-  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:0,reps:20},{label:'Right leg',secs:0,reps:20}]}
+  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]}
 ];
 const ANYTIME = [
   {id:'kneedrive', name:'Reverse knee drive', detail:'5 times each leg'},
@@ -240,7 +240,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V5</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V6</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
@@ -291,7 +291,7 @@ function beginPart(prefix=''){
   run.paused=true; run.pausedAt=Date.now(); run.start=run.pausedAt;
   render();
   const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
-  const intro = run.p===0 ? `${prefix}Exercise ${run.i+1}. ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${prefix}${pt.label}. ${how}. Go.`;
+  const intro = run.p===0 ? `${prefix}${run.i===0?'Exercise 1':'Next exercise is'} ${e.name}. ${pt.label?pt.label+'. ':''}${how}. Go.` : `${prefix}${pt.label}. ${how}. Go.`;
   say(intro, ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
 }
 
@@ -330,11 +330,11 @@ function renderRun(){
       <div class="face ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':nx?'Rest':'Last comment'}</div>
         <div class="exname" style="font-size:1.6rem">${esc(e.name)}</div>
         <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div>
-        ${nx?`<div class="muted">Next: <b style="color:var(--ink)">${esc(nx.name)}</b></div>`:''}</div>
+        </div>
       <div class="notecard"><span class="eyebrow">${prev?'You said '+niceDate(prev.date):'Last comment'}</span><p>${prev?esc(prev.note):'No comment yet for this one.'}</p></div>
       ${micBar()}
       <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>
-      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?'Next exercise':'Finish'}</button></div>`;
+      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?'Next: '+esc(nx.name):'Finish'}</button></div>`;
     const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; run.parts=ta.value?[ta.value]:[]; };
     $('#next').onclick=skip;
     tick=setInterval(updateRest,200); updateRest();
