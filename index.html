@@ -51,6 +51,10 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--go);outline-
 .face .phase{font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.9rem}
 .face.go .phase{color:var(--go)} .face.rest .phase{color:var(--rest)} .face.paused .phase{color:var(--pause)}
 .face .exname{font-family:var(--display);font-size:2.1rem;line-height:1.05;text-wrap:balance}
+.face.compact{padding:12px 16px;gap:4px}
+.face.compact .clock{font-size:min(20vw,5rem)}
+.face.compact .phase{text-transform:none;letter-spacing:.02em;font-size:1rem}
+#next{flex:2 1 0}
 .face .part{font-size:1.25rem;font-weight:700}
 .clock{font-family:var(--display);font-size:min(30vw,8.5rem);line-height:.95;font-variant-numeric:tabular-nums}
 .face.go .clock{color:var(--go)} .face.rest .clock{color:var(--rest)} .face.paused .clock{color:var(--pause)}
@@ -240,7 +244,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V6</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V7</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
@@ -327,14 +331,13 @@ function renderRun(){
   } else if(ph==='rest'){
     const prev=lastNoteFor(e.id, run.session.id), nx=ROUTINE[run.i+1];
     app.innerHTML=`${top}
-      <div class="face ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':nx?'Rest':'Last comment'}</div>
-        <div class="exname" style="font-size:1.6rem">${esc(e.name)}</div>
+      <div class="face compact ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':nx?'Rest':'Last comment'} · ${esc(e.name)}</div>
         <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div>
         </div>
-      <div class="notecard"><span class="eyebrow">${prev?'You said '+niceDate(prev.date):'Last comment'}</span><p>${prev?esc(prev.note):'No comment yet for this one.'}</p></div>
+      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?esc(nx.name):'Finish'}</button></div>
+      ${prev?`<div class="notecard"><span class="eyebrow">You said ${niceDate(prev.date)}</span><p>${esc(prev.note)}</p></div>`:''}
       ${micBar()}
-      <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>
-      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?'Next: '+esc(nx.name):'Finish'}</button></div>`;
+      <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>`;
     const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; run.parts=ta.value?[ta.value]:[]; };
     $('#next').onclick=skip;
     tick=setInterval(updateRest,200); updateRest();
