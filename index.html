@@ -104,11 +104,12 @@ const ROUTINE = [
   {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
   {id:'press',   name:'Press ups',                     parts:[{label:'',secs:30}]},
   {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
-  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]}
+  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
+  {id:'lunge',   name:'Lunge and knee drive',          wait:true, parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
+  {id:'tandem',  name:'Tandem walk',                   wait:true, parts:[{label:'',secs:60}]}
 ];
 const ANYTIME = [
-  {id:'kneedrive', name:'Reverse knee drive', detail:'5 times each leg'},
-  {id:'tandem',    name:'Tandem walk',        detail:'Whenever you like'}
+  {id:'kneedrive', name:'Reverse knee drive', detail:'5 times each leg'}
 ];
 const describe = ex => ex.parts.map(p=>(p.label?p.label.replace(' leg','')+' ':'')+(p.secs?p.secs+'s':p.reps+' times')).join(' + ');
 
@@ -161,6 +162,7 @@ function micInit(){
   rec.onstart=()=>{ micLive=true; micShow(); };
   rec.onend=()=>{ micLive=false; micShow(); micMaybeStart(400); };
   rec.onerror=e=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed'){ micBlocked=true; micWanted=false; micShow(); } };
+  rec.onspeechstart=()=>{ lastSpeechAt=Date.now(); };
   rec.onresult=e=>{
     lastSpeechAt=Date.now();
     let interim='';
@@ -184,7 +186,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 function micShow(){ const m=$('#mic'); if(!m) return;
   m.className='mic'+(micLive?' on':'');
   m.querySelector('span').textContent = !SR ? 'Voice not supported here — use Chrome' : micBlocked ? 'Microphone blocked — allow it in Chrome settings' :
-    speaking ? 'Speaking…' : micLive ? (run&&run.phase==='rest'&&!run.paused ? 'Listening for your comment' : 'Listening — say “pause”') : 'Microphone starting…'; }
+    speaking ? 'Speaking…' : micLive ? (run&&run.phase==='comment'&&!run.paused ? 'Listening for your comment' : 'Listening — say “pause”') : 'Microphone starting…'; }
 const micBar = () => `<div class="mic" id="mic"><i></i><span></span></div><div class="heard" id="heard"></div>`;
 
 /* Android sometimes returns the same words several times in one go: keep one copy */
@@ -218,8 +220,8 @@ function heard(t){
   if(run.paused) return;
   if(short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skip();
   if(short && /^(done|finished|that's it)$/.test(s) && run.phase==='go' && !part().secs) return endPart();
-  if(run.phase==='rest'){
-    if(/^(no comment|nothing|none)$/.test(s)){ run.note=''; run.parts=[]; showNote(); return; }
+  if(run.phase==='comment'){
+    if(/^(no comment|nothing|none)$/.test(s)){ run.note=''; run.parts=[]; showNote(); return finishComment(); }
     const parts = run.parts || (run.parts=[]);
     const norm = x => x.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
     const n=norm(t), prev=parts.length?norm(parts[parts.length-1]):'';
@@ -231,7 +233,7 @@ function heard(t){
     showNote(); beep(1200,.08);
   }
 }
-function showNote(){ const ta=$('#note'); if(ta && document.activeElement!==ta) ta.value=run.note||''; }
+function showNote(){ const ta=$('#note'); if(ta && document.activeElement!==ta) ta.value=run.note||''; const b=$('#next'); if(b && run.phase==='comment') b.textContent=run.note?'Save':'No comment'; }
 
 /* ---------- views ---------- */
 let view='home', run=null, tick=null, confirmDel=null, anyEx=null;
@@ -244,13 +246,13 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V8</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V10</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
-    <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. In each 30-second rest I’ll read your last comment, then listen for a new one. Stay quiet for no comment.</p>
+    <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. After each exercise I’ll read your last comment and listen for a new one (stay quiet for no comment), then give you 30 seconds’ rest before announcing the next.</p>
     <div class="list">${ROUTINE.map((x,i)=>{ const n=lastNoteFor(x.id); return `
       <div class="item"><div class="n">${i+1}</div><div class="name">${esc(x.name)}${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div>
-      <div class="meta">${esc(describe(x))}</div></div>`;}).join('')}</div>
+      <div class="meta">${esc(describe(x))}${x.wait?'<br>you start it':''}</div></div>`;}).join('')}</div>
     <div class="anytime"><h3>At any time</h3>
       ${ANYTIME.map(a=>{ const n=lastNoteFor(a.id); return `<div class="ar"><div><b>${esc(a.name)}</b><div class="muted" style="font-size:.92rem">${esc(a.detail)}</div>
         ${n?`<div class="prev">${cap(niceDate(n.date))}: “${esc(n.note)}”</div>`:''}</div><button class="small" data-any="${a.id}">Log it</button></div>`;}).join('')}
@@ -278,7 +280,9 @@ function renderAnytime(){
 }
 
 /* ---------- the workout ----------
-   phases: go (exercise part running), switch (5s change legs), rest (30s, comment), done */
+   phases: go (exercise part running, or waiting for you to say "go"),
+           switch (5s change legs), comment (last comment read out, you speak or stay quiet),
+           rest (30s countdown), done */
 const ex = () => ROUTINE[run.i];
 const part = () => ex().parts[run.p];
 const elapsed = () => ((run.paused?run.pausedAt:Date.now())-run.start)/1000;
@@ -286,25 +290,34 @@ const elapsed = () => ((run.paused?run.pausedAt:Date.now())-run.start)/1000;
 function startRun(){
   audioOn(); keepAwake(); micOn();
   run={session:{id:'s-'+Date.now(),kind:'routine',date:todayKey(),startedAt:Date.now(),entries:[],finished:false},
-       i:0,p:0,phase:'go',start:Date.now(),paused:false,pausedAt:0,lastBeep:null,work:0,note:'',quit:false};
+       i:0,p:0,phase:'go',start:Date.now(),paused:false,pausedAt:0,lastBeep:null,work:0,note:'',parts:[],quit:false};
   view='run'; beginPart('Starting. ');
 }
 function beginPart(prefix=''){
   // the clock is held at zero until the announcement finishes
   run.phase='go'; run.lastBeep=null; run.announcing=true;
   run.paused=true; run.pausedAt=Date.now(); run.start=run.pausedAt;
-  render();
   const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
-  // after a rest the name was already given at the start of the rest, so just start it
-  const named = run.i===0 ? 'Exercise 1, '+e.name+'. ' : prefix.startsWith('Resuming') ? e.name+'. ' : '';
-  const intro = `${prefix}${run.p===0?named:''}${pt.label?pt.label+'. ':''}${how}. Go.`;
-  say(intro, ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
+  let named='';
+  // the name was already given at the start of the rest, so after a rest just start it
+  if(run.p===0) named = prefix.startsWith('Resuming') ? e.name+'. ' : run.i===0 ? 'Exercise 1, '+e.name+'. ' : '';
+  const intro = `${prefix}${named}${pt.label?pt.label+'. ':''}${how}.`;
+  if(e.wait && run.p===0 && !run.waited){
+    // this one waits for you to say "go"
+    run.waiting=true; run.userPaused=true;
+    render();
+    say(intro+' Say go when you are ready.');
+    return;
+  }
+  render();
+  say(intro+' Go.', ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
 }
 
 function renderRun(){
   const e=ex(), N=ROUTINE.length, ph=run.phase, pz=run.userPaused;
   const top=`<div class="row" style="justify-content:space-between;align-items:center"><span class="eyebrow">Exercise ${run.i+1} of ${N}</span><button class="ghost small" id="quit">End workout</button></div>`;
   const pauseBtn=`<button id="pz">${pz?'Resume':'Pause'}</button>`;
+  const nx=ROUTINE[run.i+1];
   if(run.quit){
     app.innerHTML=`<div class="confirm"><h2>End this workout?</h2><p>Comments for the exercises you’ve finished are already saved.</p>
       <div class="row"><button id="keep">Keep going</button><button class="danger" id="end">End workout</button></div></div>`;
@@ -312,7 +325,16 @@ function renderRun(){
     $('#end').onclick=()=>{ hush(); micOff(); releaseAwake(); run=null; view='home'; render(); };
     return;
   }
-  if(ph==='go'){
+  if(ph==='go' && run.waiting){
+    const pt=part();
+    app.innerHTML=`${top}
+      <div class="face paused"><div class="phase">Ready? Say “go”</div>
+        <div class="exname">${esc(e.name)}</div>${pt.label?`<div class="part">${esc(pt.label)}</div>`:''}
+        <div class="clock" id="clock">${fmt(pt.secs)}</div></div>
+      ${micBar()}
+      <div class="row"><button class="primary" id="go">Start</button></div>`;
+    $('#go').onclick=resumeRun;
+  } else if(ph==='go'){
     const pt=part();
     app.innerHTML=`${top}
       <div class="face ${pz?'paused':'go'}"><div class="phase">${pz?'Paused — say “resume”':pt.secs?'Go':'Count to '+pt.reps+', then say “done”'}</div>
@@ -330,17 +352,23 @@ function renderRun(){
       <div class="row">${pauseBtn}<button class="primary" id="goNow">Start now</button></div>`;
     $('#goNow').onclick=()=>beginPart();
     tick=setInterval(updateSwitch,200); updateSwitch();
-  } else if(ph==='rest'){
-    const prev=lastNoteFor(e.id, run.session.id), nx=ROUTINE[run.i+1];
+  } else if(ph==='comment'){
+    const prev=lastNoteFor(e.id, run.session.id);
     app.innerHTML=`${top}
-      <div class="face compact ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':nx?'Rest':'Last comment'} · ${esc(e.name)}</div>
-        <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div>
-        </div>
-      <div class="row">${pauseBtn}<button class="primary" id="next">${nx?esc(nx.name):'Finish'}</button></div>
+      <div class="face compact ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':'Any comment?'} · ${esc(e.name)}</div></div>
       ${prev?`<div class="notecard"><span class="eyebrow">You said ${niceDate(prev.date)}</span><p>${esc(prev.note)}</p></div>`:''}
       ${micBar()}
-      <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>`;
-    const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; run.parts=ta.value?[ta.value]:[]; };
+      <label for="note">Today’s comment<textarea id="note" placeholder="Speak now — or stay quiet for no comment">${esc(run.note)}</textarea></label>
+      <div class="row">${pauseBtn}<button class="primary" id="next">${run.note?'Save':'No comment'}</button></div>`;
+    const ta=$('#note'); ta.oninput=()=>{ run.note=ta.value; run.parts=ta.value?[ta.value]:[]; $('#next').textContent=run.note?'Save':'No comment'; };
+    $('#next').onclick=skip;
+    tick=setInterval(updateComment,250);
+  } else if(ph==='rest'){
+    app.innerHTML=`${top}
+      <div class="face compact ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':'Rest · next up'}</div>
+        <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div></div>
+      <div class="row">${pauseBtn}<button class="primary" id="next">${esc(nx.name)}</button></div>
+      ${micBar()}`;
     $('#next').onclick=skip;
     tick=setInterval(updateRest,200); updateRest();
   } else if(ph==='done'){
@@ -353,7 +381,7 @@ function renderRun(){
     return;
   }
   $('#quit').onclick=()=>{ run.quit=true; if(!run.userPaused) pauseRun(true); render(); };
-  $('#pz').onclick=()=> run.userPaused ? resumeRun() : pauseRun();
+  const pzb=$('#pz'); if(pzb) pzb.onclick=()=> run.userPaused ? resumeRun() : pauseRun();
 }
 
 function pauseRun(silent){
@@ -366,11 +394,22 @@ function pauseRun(silent){
 function resumeRun(){
   if(!run || !run.userPaused) return;
   run.userPaused=false; run.quit=false;
+  if(run.waiting){
+    // you said "go" for an exercise that waits for you
+    run.waiting=false; run.waited=true; run.announcing=true;
+    render();
+    say('Go.', ()=>{ if(run && run.phase==='go' && run.announcing && !run.userPaused){ run.announcing=false; run.start=Date.now(); run.paused=false; beep(990,.25); render(); } });
+    return;
+  }
   // paused before the exercise had started: announce it again from the top
   if(run.phase==='go' && run.announcing){ beginPart('Resuming. '); return; }
   render();
+  if(run.phase==='comment'){
+    say('Any comment?', ()=>{ if(run && run.phase==='comment' && !run.userPaused){ run.start=Date.now(); run.paused=false; lastSpeechAt=0; } });
+    return;
+  }
   const pt=part();
-  const where = run.phase==='rest' ? 'Any comment?' : run.phase==='switch' ? pt.label+' next.' : ex().name+(pt.label?', '+pt.label:'')+'.';
+  const where = run.phase==='rest' ? 'Rest.' : run.phase==='switch' ? pt.label+' next.' : ex().name+(pt.label?', '+pt.label:'')+'.';
   say('Resuming. '+where, ()=>{ if(run && !run.userPaused && run.paused){ run.start += Date.now()-run.pausedAt; run.paused=false; } });
 }
 function countdownBeeps(left){ const s=Math.ceil(left);
@@ -392,41 +431,68 @@ function endPart(){
   beep(990,.3); buzz([200,80,200]);
   if(run.p+1 < ex().parts.length){
     run.p++; run.phase='switch'; run.start=Date.now(); run.paused=false; render(); say('Switch to '+part().label.toLowerCase());
-  } else startRest();
+  } else startComment();
 }
-function startRest(){
-  const e=ex(), prev=lastNoteFor(e.id, run.session.id), last=run.i+1>=ROUTINE.length;
-  run.phase='rest'; run.note=''; run.parts=[]; run.lastBeep=null; run.start=Date.now(); run.paused=false;
+
+/* 1. read out the last comment and listen */
+function startComment(){
+  const e=ex(), prev=lastNoteFor(e.id, run.session.id);
+  run.phase='comment'; run.note=''; run.parts=[];
+  run.paused=true; run.pausedAt=Date.now(); run.start=run.pausedAt; lastSpeechAt=0;
   render();
-  const nx=ROUTINE[run.i+1];
-  say((nx?'Next exercise is '+nx.name+'. ':'')+(prev?'You said: '+prev.note+'. ':'')+'Any comment?');
+  say((prev?'You said: '+prev.note+'. ':'')+'Any comment?',
+      ()=>{ if(run && run.phase==='comment' && !run.userPaused){ run.start=Date.now(); run.paused=false; lastSpeechAt=0; } });
 }
-function updateRest(){
-  const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
-  c.textContent=fmt(Math.ceil(left)); const b=$('#bar'); if(b) b.style.width=Math.min(100,t/REST*100)+'%';
-  if(run.paused) return;
-  countdownBeeps(left);
-  if(left<=0 && Date.now()-lastSpeechAt>1500) skip(); // don't cut you off mid-sentence
+const QUIET_NONE = 5;   // seconds of silence = no comment
+const QUIET_AFTER = 4;  // seconds of silence after you've spoken = comment finished
+function updateComment(){
+  if(run.paused || speaking) return;
+  const ta=$('#note'); if(ta && document.activeElement===ta) return; // typing: wait for the button
+  const t=elapsed(), quiet = lastSpeechAt ? (Date.now()-lastSpeechAt)/1000 : t;
+  if(!run.note){ if(t>=QUIET_NONE && quiet>=1.5) finishComment(); }
+  else if(quiet>=QUIET_AFTER) finishComment();
 }
-function skip(){
-  if(!run || run.userPaused) return;
-  clearInterval(tick);
-  if(run.phase==='go' || run.phase==='switch'){
-    if(run.phase==='go'){ const pt=part(); run.work += pt.secs?Math.min(pt.secs,Math.round(elapsed())):Math.round(elapsed()); }
-    hush(); startRest(); return;
-  }
-  if(run.phase!=='rest') return;
-  hush();
+function finishComment(){
+  clearInterval(tick); hush();
   const e=ex(), s=run.session, ta=$('#note');
   const note=((ta && ta.value) || run.note || '').trim().slice(0,500);
   s.entries.push({exId:e.id, name:e.name, secs:run.work, note});
   run.work=0;
   if(!state.sessions.includes(s)) state.sessions.push(s);
   if(run.i+1>=ROUTINE.length){
-    s.finished=true; save(); run.phase='done'; micOff(); releaseAwake(); render(); say('Workout finished. Well done.'); return;
+    s.finished=true; save(); run.phase='done'; micOff(); releaseAwake(); render(); say((note?'Saved. ':'')+'Workout finished. Well done.'); return;
   }
   save();
-  run.i++; run.p=0; beginPart(note?'Saved. ':'');
+  startRest(note);
+}
+/* 2. thirty second countdown */
+function startRest(saved){
+  run.phase='rest'; run.lastBeep=null; run.start=Date.now(); run.paused=false;
+  render();
+  say((saved?'Saved. ':'')+ROUTINE[run.i+1].name+' in thirty seconds.');
+}
+function updateRest(){
+  const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
+  c.textContent=fmt(Math.ceil(left)); const b=$('#bar'); if(b) b.style.width=Math.min(100,t/REST*100)+'%';
+  if(run.paused) return;
+  countdownBeeps(left);
+  if(left<=0) nextExercise();
+}
+/* 3. announce and start the next exercise */
+function nextExercise(){
+  clearInterval(tick); hush();
+  run.i++; run.p=0; run.waited=false; run.waiting=false;
+  beginPart();
+}
+function skip(){
+  if(!run || run.userPaused) return;
+  clearInterval(tick);
+  if(run.phase==='go' || run.phase==='switch'){
+    if(run.phase==='go'){ const pt=part(); run.work += pt.secs?Math.min(pt.secs,Math.round(elapsed())):Math.round(elapsed()); }
+    hush(); startComment(); return;
+  }
+  if(run.phase==='comment') return finishComment();
+  if(run.phase==='rest') return nextExercise();
 }
 
 /* ---------- history ---------- */
