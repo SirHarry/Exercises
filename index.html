@@ -104,7 +104,8 @@ const ROUTINE = [
   {id:'oneleg',  name:'Stand on one leg',              parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
   {id:'press',   name:'Press ups',                     parts:[{label:'',secs:30}]},
   {id:'stepup',  name:'Step ups',                      parts:[{label:'Left leg',secs:15},{label:'Right leg',secs:15}]},
-  {id:'heel',    name:'Stand on step and heel raise',  parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
+  {id:'heel-l',  name:'Heel raise, left leg',          parts:[{label:'',secs:30}]},
+  {id:'heel-r',  name:'Heel raise, right leg',         parts:[{label:'',secs:30}]},
   {id:'lunge',   name:'Lunge and knee drive',          wait:true, parts:[{label:'Left leg',secs:30},{label:'Right leg',secs:30}]},
   {id:'tandem',  name:'Tandem walk',                   wait:true, parts:[{label:'',secs:60}]}
 ];
@@ -217,6 +218,7 @@ function heard(t){
   const short = wordCount(s)<=3;
   if(short && /^(pause|stop|wait|hold on)( please)?$/.test(s)) return pauseRun();
   if(short && /^(resume|continue|carry on|go|go on|start|ready)( please)?$/.test(s)) return resumeRun();
+  if(run.waiting && short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skipWaiting();
   if(run.paused) return;
   if(short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skip();
   if(short && /^(done|finished|that's it)$/.test(s) && run.phase==='go' && !part().secs) return endPart();
@@ -246,7 +248,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V10</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V12</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. After each exercise I’ll read your last comment and listen for a new one (stay quiet for no comment), then give you 30 seconds’ rest before announcing the next.</p>
@@ -300,13 +302,13 @@ function beginPart(prefix=''){
   const e=ex(), pt=part(), how = pt.secs ? pt.secs+' seconds' : pt.reps+' times, then say done';
   let named='';
   // the name was already given at the start of the rest, so after a rest just start it
-  if(run.p===0) named = prefix.startsWith('Resuming') ? e.name+'. ' : run.i===0 ? 'Exercise 1, '+e.name+'. ' : '';
+  if(run.p===0) named = prefix.startsWith('Resuming') ? e.name+'. ' : prefix.startsWith('Skipped') ? 'Next, '+e.name+'. ' : run.i===0 ? 'Exercise 1, '+e.name+'. ' : '';
   const intro = `${prefix}${named}${pt.label?pt.label+'. ':''}${how}.`;
   if(e.wait && run.p===0 && !run.waited){
     // this one waits for you to say "go"
     run.waiting=true; run.userPaused=true;
     render();
-    say(intro+' Say go when you are ready.');
+    say(intro+' Say go when you are ready, or skip.');
     return;
   }
   render();
@@ -328,12 +330,12 @@ function renderRun(){
   if(ph==='go' && run.waiting){
     const pt=part();
     app.innerHTML=`${top}
-      <div class="face paused"><div class="phase">Ready? Say “go”</div>
+      <div class="face paused"><div class="phase">Ready? Say “go” or “skip”</div>
         <div class="exname">${esc(e.name)}</div>${pt.label?`<div class="part">${esc(pt.label)}</div>`:''}
         <div class="clock" id="clock">${fmt(pt.secs)}</div></div>
       ${micBar()}
-      <div class="row"><button class="primary" id="go">Start</button></div>`;
-    $('#go').onclick=resumeRun;
+      <div class="row"><button id="skipw">Skip</button><button class="primary" id="go">Start</button></div>`;
+    $('#go').onclick=resumeRun; $('#skipw').onclick=skipWaiting;
   } else if(ph==='go'){
     const pt=part();
     app.innerHTML=`${top}
@@ -341,7 +343,7 @@ function renderRun(){
         <div class="exname">${esc(e.name)}</div>${pt.label?`<div class="part">${esc(pt.label)}</div>`:''}
         <div class="clock" id="clock">${pt.secs?fmt(pt.secs):'0:00'}</div>${pt.secs?'<div class="bar"><i id="bar"></i></div>':''}</div>
       ${micBar()}
-      <div class="row">${pauseBtn}<button class="primary" id="done">${pt.secs?'Skip':'Done'}</button></div>`;
+      <div class="row">${pauseBtn}<button class="primary" id="done">${pt.secs?'Skip exercise':'Done'}</button></div>`;
     $('#done').onclick=()=> pt.secs ? skip() : endPart();
     tick=setInterval(updateGo,200); updateGo();
   } else if(ph==='switch'){
@@ -466,10 +468,10 @@ function finishComment(){
   startRest(note);
 }
 /* 2. thirty second countdown */
-function startRest(saved){
+function startRest(saved, prefix=''){
   run.phase='rest'; run.lastBeep=null; run.start=Date.now(); run.paused=false;
   render();
-  say((saved?'Saved. ':'')+ROUTINE[run.i+1].name+' in thirty seconds.');
+  say(prefix+(saved?'Saved. ':'')+ROUTINE[run.i+1].name+' in thirty seconds.');
 }
 function updateRest(){
   const t=elapsed(), left=REST-t, c=$('#clock'); if(!c) return;
@@ -478,6 +480,19 @@ function updateRest(){
   countdownBeeps(left);
   if(left<=0) nextExercise();
 }
+/* skip the current exercise: no comment, straight to the 30s countdown for the next one */
+function skipExercise(){
+  if(!run) return;
+  hush(); clearInterval(tick);
+  run.waiting=false; run.userPaused=false; run.paused=false; run.work=0; run.p=0;
+  if(run.i+1>=ROUTINE.length){
+    const s=run.session; s.finished=true;
+    if(!state.sessions.includes(s)) state.sessions.push(s);
+    save(); run.phase='done'; micOff(); releaseAwake(); render(); say('Skipped. Workout finished. Well done.'); return;
+  }
+  startRest(false, 'Skipped. ');
+}
+function skipWaiting(){ if(run && run.waiting) skipExercise(); }
 /* 3. announce and start the next exercise */
 function nextExercise(){
   clearInterval(tick); hush();
@@ -487,10 +502,7 @@ function nextExercise(){
 function skip(){
   if(!run || run.userPaused) return;
   clearInterval(tick);
-  if(run.phase==='go' || run.phase==='switch'){
-    if(run.phase==='go'){ const pt=part(); run.work += pt.secs?Math.min(pt.secs,Math.round(elapsed())):Math.round(elapsed()); }
-    hush(); startComment(); return;
-  }
+  if(run.phase==='go' || run.phase==='switch') return skipExercise();
   if(run.phase==='comment') return finishComment();
   if(run.phase==='rest') return nextExercise();
 }
