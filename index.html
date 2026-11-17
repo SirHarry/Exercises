@@ -220,6 +220,11 @@ function heard(t){
   if(short && /^(resume|continue|carry on|go|go on|start|ready)( please)?$/.test(s)) return resumeRun();
   if(run.waiting && short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skipWaiting();
   if(run.paused) return;
+  if(run.phase==='rest'){
+    // in the rest, "skip" means skip the exercise that is coming up
+    if(short && /^(skip|skip it|skip that|skip exercise|skip next|skip next exercise)$/.test(s)) return skipUpcoming();
+    if(short && /^(next|next exercise|start now)$/.test(s)) return nextExercise();
+  }
   if(short && /^(skip|next|skip it|next exercise|skip exercise)$/.test(s)) return skip();
   if(short && /^(done|finished|that's it)$/.test(s) && run.phase==='go' && !part().secs) return endPart();
   if(run.phase==='comment'){
@@ -248,7 +253,7 @@ function render(){
 function renderHome(){
   const last=sorted().find(s=>s.kind!=='anytime');
   app.innerHTML=`
-    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V12</span></h1></div>
+    <div><div class="eyebrow">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div><h1>Daily exercises <span style="font-size:.55em;color:var(--muted);font-weight:600">V13</span></h1></div>
     ${!SR?'<div class="warn">Voice control needs Google Chrome. Open this page in Chrome to talk to it.</div>':''}
     <button class="primary" id="start">Start today’s exercises</button>
     <p class="hint">Say <b>“pause”</b> or <b>“resume”</b> at any time, and <b>“skip”</b> to move on. After each exercise I’ll read your last comment and listen for a new one (stay quiet for no comment), then give you 30 seconds’ rest before announcing the next.</p>
@@ -317,7 +322,7 @@ function beginPart(prefix=''){
 
 function renderRun(){
   const e=ex(), N=ROUTINE.length, ph=run.phase, pz=run.userPaused;
-  const top=`<div class="row" style="justify-content:space-between;align-items:center"><span class="eyebrow">Exercise ${run.i+1} of ${N}</span><button class="ghost small" id="quit">End workout</button></div>`;
+  const top=`<div class="row" style="justify-content:space-between;align-items:center"><span class="eyebrow">${ph==='rest'?'Coming up: '+(run.i+2):'Exercise '+(run.i+1)} of ${N}</span><button class="ghost small" id="quit">End workout</button></div>`;
   const pauseBtn=`<button id="pz">${pz?'Resume':'Pause'}</button>`;
   const nx=ROUTINE[run.i+1];
   if(run.quit){
@@ -368,10 +373,12 @@ function renderRun(){
   } else if(ph==='rest'){
     app.innerHTML=`${top}
       <div class="face compact ${pz?'paused':'rest'}"><div class="phase">${pz?'Paused — say “resume”':'Rest · next up'}</div>
+        <div class="exname" style="font-size:1.6rem">${esc(nx.name)}</div>
         <div class="clock" id="clock">${fmt(REST)}</div><div class="bar"><i id="bar"></i></div></div>
-      <div class="row">${pauseBtn}<button class="primary" id="next">${esc(nx.name)}</button></div>
-      ${micBar()}`;
-    $('#next').onclick=skip;
+      <div class="row">${pauseBtn}<button id="skipnx">Skip it</button><button class="primary" id="next">Start now</button></div>
+      ${micBar()}
+      <p class="hint">Say “skip” to skip ${esc(nx.name)}.</p>`;
+    $('#next').onclick=skip; $('#skipnx').onclick=skipUpcoming;
     tick=setInterval(updateRest,200); updateRest();
   } else if(ph==='done'){
     const s=run.session;
@@ -493,6 +500,12 @@ function skipExercise(){
   startRest(false, 'Skipped. ');
 }
 function skipWaiting(){ if(run && run.waiting) skipExercise(); }
+/* during the rest: skip the exercise that is coming up and count down to the one after */
+function skipUpcoming(){
+  if(!run || run.userPaused || run.phase!=='rest') return;
+  run.i++;               // the coming exercise is passed over
+  skipExercise();        // then on to the next one's countdown (or finish)
+}
 /* 3. announce and start the next exercise */
 function nextExercise(){
   clearInterval(tick); hush();
